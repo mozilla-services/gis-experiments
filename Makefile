@@ -6,7 +6,6 @@ endif
 
 bin/python:
 	virtualenv $(VTENV_OPTS) .
-	bin/python setup.py develop
 
 test: bin/python
 	bin/pip install numpy
