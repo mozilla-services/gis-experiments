@@ -10,3 +10,4 @@ bin/python:
 test: bin/python
 	bin/pip install numpy
 	bin/pip install matplotlib
+	bin/pip install shapely
