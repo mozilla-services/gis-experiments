@@ -7,7 +7,8 @@ endif
 bin/python:
 	virtualenv $(VTENV_OPTS) .
 
-test: bin/python
+build: bin/python
 	bin/pip install numpy
 	bin/pip install matplotlib
 	bin/pip install shapely
+	bin/pip install descartes
