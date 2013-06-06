@@ -178,7 +178,6 @@ asus2 = []
 for device in reality:
     device_location = device['x'], device['y']
     asu = lla_distance(sarah_location, device_location)
-    print asu
     asus2.append({'id': device['id'],
                  'asu': asu})
 
