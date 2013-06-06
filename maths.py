@@ -137,8 +137,8 @@ def triangulation(loc1, dist1, loc2, dist2, loc3, dist3):
 
     # only one case shown here
     # XXX
-    ###z = sqrt(pow(dist1,2) - pow(x,2) - pow(y,2))
-    z = sqrt(abs(pow(dist1,2) - pow(x,2) - pow(y,2)))
+    z = sqrt(pow(dist1,2) - pow(x,2) - pow(y,2))
+    #z = sqrt(abs(pow(dist1,2) - pow(x,2) - pow(y,2)))
 
     #triPt is an array with ECEF x,y,z of trilateration point
     triPt = P1 + x*ex + y*ey + z*ez
