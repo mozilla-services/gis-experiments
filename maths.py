@@ -15,12 +15,14 @@ import numpy
 DB = {}
 DEVICES = {}
 
+from utils import trilaterate, lla_distance
+
 
 class Device(object):
     def __init__(self, id):
         self.id = id
         self.measures = []
-        self.lon, self.lat = None, None
+        self.x, self.y = None, None
 
 
 
@@ -36,7 +38,7 @@ def guess_location(asus):
 
         if id in DEVICES:
             device = DEVICES[id]
-            if device.lon is not None:
+            if device.x is not None:
                 picked.append((asu, device))
 
     if len(picked) < 3:
@@ -48,10 +50,11 @@ def guess_location(asus):
     dist1, device1 = picked[0]
     dist2, device2 = picked[1]
     dist3, device3 = picked[2]
-    loc1 = device1.lon, device1.lat
-    loc2 = device2.lon, device2.lat
-    loc3 = device3.lon, device3.lat
-    return triangulation(loc1, dist1, loc2, dist2, loc3, dist3)
+    loc1 = device1.x, device1.y
+    loc2 = device2.x, device2.y
+    loc3 = device3.x, device3.y
+    x, y, __ = trilaterate([loc1, loc2, loc3], [dist1, dist2, dist3])
+    return x, y
 
 
 class Map(object):
@@ -60,14 +63,14 @@ class Map(object):
         self.ax = self.fig.add_subplot(1, 1, 1)
         self._picked = []
 
-    def plot_coords(self, lon=0, lat=0, color=None, char='o', size=12, id=''):
+    def plot_coords(self, x=0, y=0, color=None, char='o', size=12, id=''):
         if color is None:
             color = random.choice(colors.cnames.values())
             while color in self._picked:
                 color = random.choice(colors.cnames.values())
             self._picked.append(color)
 
-        self.ax.plot(lon, lat, char, color=color, zorder=1, label=id,
+        self.ax.plot(x, y, char, color=color, zorder=1, label=id,
                      markersize=size)
 
     def _draw_legend(self):
@@ -92,85 +95,16 @@ class Map(object):
             pass
 
 
-def triangulation(loc1, dist1, loc2, dist2, loc3, dist3):
-    LatA, LonA = loc1
-    LatB, LonB = loc2
-    LatC, LonC = loc3
-    # assuming elevation = 0
-    earthR = 6371
-
-    #using authalic sphere
-    #if using an ellipsoid this step is slightly different
-    #Convert geodetic Lat/Long to ECEF xyz
-    #   1. Convert Lat/Long to radians
-    #   2. Convert Lat/Long(radians) to ECEF
-    xA = earthR *(math.cos(math.radians(LatA)) * math.cos(math.radians(LonA)))
-    yA = earthR *(math.cos(math.radians(LatA)) * math.sin(math.radians(LonA)))
-    zA = earthR *(math.sin(math.radians(LatA)))
-
-    xB = earthR *(math.cos(math.radians(LatB)) * math.cos(math.radians(LonB)))
-    yB = earthR *(math.cos(math.radians(LatB)) * math.sin(math.radians(LonB)))
-    zB = earthR *(math.sin(math.radians(LatB)))
-
-    xC = earthR *(math.cos(math.radians(LatC)) * math.cos(math.radians(LonC)))
-    yC = earthR *(math.cos(math.radians(LatC)) * math.sin(math.radians(LonC)))
-    zC = earthR *(math.sin(math.radians(LatC)))
-
-    P1 = array([xA, yA, zA])
-    P2 = array([xB, yB, zB])
-    P3 = array([xC, yC, zC])
-
-    #from wikipedia
-    #transform to get circle 1 at origin
-    #transform to get circle 2 on x axis
-    ex = (P2 - P1)/(numpy.linalg.norm(P2 - P1))
-    i = dot(ex, P3 - P1)
-    ey = (P3 - P1 - i*ex)/(numpy.linalg.norm(P3 - P1 - i*ex))
-    ez = numpy.cross(ex,ey)
-    d = numpy.linalg.norm(P2 - P1)
-    j = dot(ey, P3 - P1)
-
-    #from wikipedia
-    #plug and chug using above values
-    x = (pow(dist1,2) - pow(dist2,2) + pow(d,2))/(2*d)
-    y = ((pow(dist1,2) - pow(dist3,2) + pow(i,2) + pow(j,2))/(2*j)) - ((i/j)*x)
-
-    # only one case shown here
-    # XXX
-    z = sqrt(pow(dist1,2) - pow(x,2) - pow(y,2))
-    #z = sqrt(abs(pow(dist1,2) - pow(x,2) - pow(y,2)))
-
-    #triPt is an array with ECEF x,y,z of trilateration point
-    triPt = P1 + x*ex + y*ey + z*ez
-
-    #convert back to lat/long from ECEF
-    #convert to degrees
-    lat = math.degrees(math.asin(triPt[2] / earthR))
-    lon = math.degrees(math.atan2(triPt[1],triPt[0]))
-
-    return lat, lon
-
-
-def get_asu(loc1, loc2):
-    # distance
-    x1, y1 = loc1
-    x2, y2 = loc2
-    dist = abs(sqrt((x2 - x1)**2 + (y2 - y1)**2))
-    dist *= 10
-    if dist > 100:
-        dist = 100
-    return dist
-
-
 map = Map()
 # here's the reality: a place with one cell tower and 5 wifis
 reality = [
-        {'id': 'cell tower', 'lon': 43.2, 'lat': 2.2, 'char': '^', 'size': 15},
-        {'id': 'wifi1', 'lon': 43.1, 'lat': 1.9},
-        {'id': 'wifi2', 'lon': 42.8, 'lat': 2.7},
-        {'id': 'wifi3', 'lon': 43.9, 'lat': 2.2},
-        {'id': 'wifi4', 'lon': 42.2, 'lat': 1.2},
-        {'id': 'wifi5', 'lon': 42.0, 'lat': 2.9}
+        {'id': 'cell tower',
+                        'x': 43.136944, 'y': 2.287623, 'char': '^', 'size': 15},
+        {'id': 'wifi1', 'x': 43.132098, 'y': 1.932456},
+        {'id': 'wifi2', 'x': 42.809876, 'y': 2.798754},
+        {'id': 'wifi3', 'x': 43.209975, 'y': 2.239235},
+        {'id': 'wifi4', 'x': 41.932323, 'y': 1.227653},
+        {'id': 'wifi5', 'x': 42.023398, 'y': 2.128209}
 ]
 
 for location in reality:
@@ -180,9 +114,9 @@ for location in reality:
 def crowd_source(location):
     asus = []
     for device in reality:
-        device_location = device['lon'], device['lat']
+        device_location = device['x'], device['y']
         device_id = device['id']
-        asu = get_asu(location, device_location)
+        asu = lla_distance(location, device_location)
 
         if device_id in DEVICES:
             dbdevice = DEVICES[device_id]
@@ -193,62 +127,69 @@ def crowd_source(location):
         dbdevice.measures.append((location, asu))
 
         # do we have 3 measures ?
-        if len(dbdevice.measures) > 2 and dbdevice.lon is None:
-            loc1, ss1 = dbdevice.measures[0]
-            loc2, ss2 = dbdevice.measures[1]
-            loc3, ss3 = dbdevice.measures[2]
-            lon, lat =  triangulation(loc1, ss1, loc2, ss2, loc3, ss3)
-            dbdevice.lon, dbdevice.lat = lon, lat
-            print '%s is at %.4f, %.4f' % (dbdevice.id, dbdevice.lon, dbdevice.lat)
+        if len(dbdevice.measures) > 2 and dbdevice.x is None:
+            loc1, dist1 = dbdevice.measures[0]
+            loc2, dist2 = dbdevice.measures[1]
+            loc3, dist3 = dbdevice.measures[2]
+            try:
+                x, y, __ = trilaterate([loc1, loc2, loc3], [dist1, dist2, dist3])
+            except ValueError:
+                print 'cannot trilaterate %s' % dbdevice.id
+            else:
+                dbdevice.x, dbdevice.y = x, y
+                print '%s is at %.4f, %.4f' % (dbdevice.id, dbdevice.x, dbdevice.y)
         DEVICES[device_id] = dbdevice
 
 # now bob is walking around, and knows his location by GPS, so he can
 # crowd-source it. For each device he sees, he is sending back
 # its id and asu
-bob = {'id': 'bob', 'lon': 41.9, 'lat': 2.3, 'size': 20, 'char': 'v'}
+bob = {'id': 'bob', 'x': 43.937484, 'y': 2.348756, 'size': 20, 'char': 'v'}
 map.plot_coords(**bob)
 
-bob_location = bob['lon'], bob['lat']
+bob_location = bob['x'], bob['y']
 crowd_source(bob_location)
 
 
 
 # jon does the same thing
-jon = {'id': 'jon', 'lon': 40.9, 'lat': 1.3, 'size': 20, 'char': '<'}
+jon = {'id': 'jon', 'x': 42.432546, 'y': 1.333467, 'size': 20, 'char': '<'}
 map.plot_coords(**jon)
-jon_location = jon['lon'], jon['lat']
+jon_location = jon['x'], jon['y']
 crowd_source(jon_location)
 
 
 # then bill
-bill = {'id': 'bill', 'lon': 38.9, 'lat': 2.4, 'size': 20, 'char': '8'}
+bill = {'id': 'bill', 'x': 41.938347, 'y': 1.738475, 'size': 20, 'char': '8'}
 map.plot_coords(**bill)
-bill_location = bill['lon'], bill['lat']
+bill_location = bill['x'], bill['y']
 crowd_source(bill_location)
 
 # now sarah is hanging around the same area, she does not know
 # her location but she sees the same devices around her.
 
-# her location is  41.9, 2.0 but we want our system to find it
-sarah = {'id': 'sarah', 'lon': 40.9, 'lat': 1.8, 'size': 20, 'char': '>'}
+# her location is  40.9, 1.8 but we want our system to find it
+sarah = {'id': 'sarah', 'x': 43.904945, 'y': 1.838475, 'size': 20, 'char': '>'}
+sarah_location = sarah['x'], sarah['y']
 map.plot_coords(**sarah)
 
 # she's sending the asus she sees
 asus2 = []
 
 for device in reality:
-    device_location = device['lon'], device['lat']
+    device_location = device['x'], device['y']
+    asu = lla_distance(sarah_location, device_location)
+    print asu
     asus2.append({'id': device['id'],
-                 'asu': get_asu(bob_location, device_location)})
+                 'asu': asu})
 
 
-guessed_lon, guessed_lat = guess_location(asus2)
+guessed_x, guessed_y = guess_location(asus2)
 guessed_sarah = {'id': 'sarah (guessed)',
-                 'lon': guessed_lon, 'lat': guessed_lat, 'size': 20, 'char': '<'}
+                 'x': guessed_x, 'y': guessed_y, 'size': 20, 'char': '<'}
 map.plot_coords(**guessed_sarah)
 
-print 'Sarah %.4f, %.4f' % (sarah['lon'], sarah['lat'])
-print 'Guess %.4f %.4f' % (guessed_lon, guessed_lat)
+print 'Sarah %.4f, %.4f' % (sarah['x'], sarah['y'])
+print 'Guess %.4f %.4f' % (guessed_x, guessed_y)
 
 
 map.show()
