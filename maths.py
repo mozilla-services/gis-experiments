@@ -77,7 +77,7 @@ class Map(object):
         labels2 = []
 
         for handle, label in zip(handles, labels):
-            if 'wifi' in label:
+            if 'wifi' in label or label in ('bill', 'bob', 'jon'):
                 continue
             handles2.append(handle)
             labels2.append(label)
@@ -156,11 +156,10 @@ def get_asu(loc1, loc2):
     x1, y1 = loc1
     x2, y2 = loc2
     dist = abs(sqrt((x2 - x1)**2 + (y2 - y1)**2))
-    dist *= 20
-
+    dist *= 10
     if dist > 100:
         dist = 100
-    return 100 - dist
+    return dist
 
 
 map = Map()
@@ -186,22 +185,22 @@ def crowd_source(location):
         asu = get_asu(location, device_location)
 
         if device_id in DEVICES:
-            device = DEVICES[device_id]
+            dbdevice = DEVICES[device_id]
         else:
-            device = Device(device_id)
+            dbdevice = Device(device_id)
 
         # see how to ignore / drop
-        device.measures.append((location, asu))
+        dbdevice.measures.append((location, asu))
 
         # do we have 3 measures ?
-        if len(device.measures) > 2 and device.lon is None:
-            loc1, ss1 = device.measures[0]
-            loc2, ss2 = device.measures[1]
-            loc3, ss3 = device.measures[2]
+        if len(dbdevice.measures) > 2 and dbdevice.lon is None:
+            loc1, ss1 = dbdevice.measures[0]
+            loc2, ss2 = dbdevice.measures[1]
+            loc3, ss3 = dbdevice.measures[2]
             lon, lat =  triangulation(loc1, ss1, loc2, ss2, loc3, ss3)
-            device.lon, device.lat = lon, lat
-
-        DEVICES[device_id] = device
+            dbdevice.lon, dbdevice.lat = lon, lat
+            print '%s is at %.4f, %.4f' % (dbdevice.id, dbdevice.lon, dbdevice.lat)
+        DEVICES[device_id] = dbdevice
 
 # now bob is walking around, and knows his location by GPS, so he can
 # crowd-source it. For each device he sees, he is sending back
@@ -218,12 +217,11 @@ crowd_source(bob_location)
 jon = {'id': 'jon', 'lon': 40.9, 'lat': 1.3, 'size': 20, 'char': '<'}
 map.plot_coords(**jon)
 jon_location = jon['lon'], jon['lat']
-
 crowd_source(jon_location)
 
 
 # then bill
-bill = {'id': 'bill', 'lon': 43.9, 'lat': 2.4, 'size': 20, 'char': 'x'}
+bill = {'id': 'bill', 'lon': 38.9, 'lat': 2.4, 'size': 20, 'char': '8'}
 map.plot_coords(**bill)
 bill_location = bill['lon'], bill['lat']
 crowd_source(bill_location)
@@ -232,7 +230,7 @@ crowd_source(bill_location)
 # her location but she sees the same devices around her.
 
 # her location is  41.9, 2.0 but we want our system to find it
-sarah = {'id': 'sarah', 'lon': 43.9, 'lat': 2.3, 'size': 20, 'char': '>'}
+sarah = {'id': 'sarah', 'lon': 40.9, 'lat': 1.8, 'size': 20, 'char': '>'}
 map.plot_coords(**sarah)
 
 # she's sending the asus she sees
@@ -248,6 +246,10 @@ guessed_lon, guessed_lat = guess_location(asus2)
 guessed_sarah = {'id': 'sarah (guessed)',
                  'lon': guessed_lon, 'lat': guessed_lat, 'size': 20, 'char': '<'}
 map.plot_coords(**guessed_sarah)
+
+print 'Sarah %.4f, %.4f' % (sarah['lon'], sarah['lat'])
+print 'Guess %.4f %.4f' % (guessed_lon, guessed_lat)
+
 
 map.show()
 
