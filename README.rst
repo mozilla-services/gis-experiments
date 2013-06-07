@@ -4,22 +4,23 @@ Location demo
 Terms
 -----
 
-- A signal source (SS) is either a cell tower or a wifi access point
+- A **signal source** is either a cell tower or a wifi access point
 
-- The location db contains coordinates of cell towers or wifi access points
+- The **location db** contains coordinates of cell towers or wifi access points
 
-- a measure is a list of wifi or cell tower, each one with a signal strength
+- a **measure** is a list of wifi or cell tower, each one with a signal strength
   when possible and a unique key.
 
-- Signal strength is generally some ASU (arbitrary strength unit) measure like
+- **Signal strength** is generally some ASU (arbitrary strength unit) measure like
   "16" or "92" with a meaning dependent on the network standard
 
-- Time of flight is a measure of how much time it took a signal to reach the
+- **Time of flight** is a measure of how much time it took a signal to reach the
   user equipment, gathered from things like "round trip time" or "timing advance"
 
-- A cell/wifi record consists of a unique id, a lat/lon location, a network
+- A **cell/wifi record** consists of a unique id, a lat/lon location, a network
   standard, a maximum radius, a minimum and maximum signal strength and a maximum
   time of flight
+
 
 The theory
 ----------
@@ -37,7 +38,7 @@ To build the location db of signal sources, we proceed as following:
    we can guess it by doing a trilateration based on the signal sources
    it sees.
 
-4/ th location db are constantly refined with new incoming data.
+4/ the location db is constantly refined with new incoming data.
 
 
 Demo
