@@ -44,6 +44,8 @@ To build the location db of signal sources, we proceed as following:
 Demo
 ----
 
+.. image:: https://github.com/tarekziade/gis/blob/master/demo.png
+
 To install and run the demo ::
 
     $ make build
